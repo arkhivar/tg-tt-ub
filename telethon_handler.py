@@ -3,22 +3,24 @@ from telethon.errors import FloodWaitError, ChatAdminRequiredError
 import time
 
 def sort_topics(client, chat_id, sort_status, add_log):
-    try:
-        chat_id_int = int(chat_id) if isinstance(chat_id, str) and chat_id.lstrip('-').isdigit() else chat_id
-    except ValueError:
-        chat_id_int = chat_id
+    add_log(f"Resolving chat entity: {chat_id}")
     
-    add_log(f"Fetching topics from chat: {chat_id_int}")
+    try:
+        channel = client.get_entity(chat_id)
+    except Exception as e:
+        raise Exception(f"Failed to resolve chat: {str(e)}")
+    
+    add_log(f"Fetching topics from chat: {chat_id}")
     
     all_topics = []
-    offset_date = 0
+    offset_date = None
     offset_id = 0
     offset_topic = 0
     
     while True:
         try:
             result = client(GetForumTopicsRequest(
-                channel=chat_id_int,
+                channel=channel,
                 offset_date=offset_date,
                 offset_id=offset_id,
                 offset_topic=offset_topic,
@@ -64,9 +66,9 @@ def sort_topics(client, chat_id, sort_status, add_log):
     for idx, topic in enumerate(sorted_topics):
         try:
             client.send_message(
-                chat_id_int,
+                channel,
                 ".",
-                reply_to=topic.id
+                reply_to=topic.top_message
             )
             
             sort_status["progress"] = idx + 1
@@ -81,9 +83,9 @@ def sort_topics(client, chat_id, sort_status, add_log):
             time.sleep(wait_time)
             
             client.send_message(
-                chat_id_int,
+                channel,
                 ".",
-                reply_to=topic.id
+                reply_to=topic.top_message
             )
             sort_status["progress"] = idx + 1
             

@@ -118,6 +118,16 @@ def login():
 
 @app.route('/start_sort', methods=['POST'])
 def start_sort():
+    if not client:
+        return jsonify({"error": "Client not initialized. Please check API credentials."}), 500
+    
+    try:
+        with client:
+            if not client.is_user_authorized():
+                return jsonify({"error": "Not authorized. Please login first."}), 401
+    except Exception as e:
+        return jsonify({"error": f"Authorization check failed: {str(e)}"}), 500
+    
     data = request.json
     chat_id = data.get('chat_id')
     
@@ -136,6 +146,9 @@ def status():
 
 @app.route('/logout', methods=['POST'])
 def logout():
+    if sort_status["running"]:
+        return jsonify({"error": "Cannot logout while a sort operation is running"}), 400
+    
     try:
         with client:
             client.log_out()
