@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Telegram Topic Sorter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 Telegram Authentication</h1>
+            <p>Enter the verification code sent to your Telegram</p>
+        </header>
+
+        <div class="card">
+            <h2>Verification Code</h2>
+            {% if error %}
+            <div class="error-message">
+                {{ error }}
+            </div>
+            {% endif %}
+            <form method="POST">
+                <div class="form-group">
+                    <label for="code">Enter Code:</label>
+                    <input type="text" id="code" name="code" placeholder="12345" required autofocus />
+                    <small>Check your Telegram app for the verification code</small>
+                </div>
+                <button type="submit" class="btn btn-primary">Verify</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>ℹ️ Instructions</h3>
+            <ol>
+                <li>A verification code has been sent to your Telegram account</li>
+                <li>Open Telegram and check for the code</li>
+                <li>Enter the code above and click Verify</li>
+                <li>Once verified, you'll be redirected to the main page</li>
+            </ol>
+        </div>
+    </div>
+</body>
+</html>

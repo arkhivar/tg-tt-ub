@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - Telegram Topic Sorter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚠️ Error</h1>
+        </header>
+
+        <div class="card">
+            <div class="error-message">
+                {{ error }}
+            </div>
+            <a href="/" class="btn btn-primary">Go Back</a>
+        </div>
+
+        <div class="card">
+            <h3>Need Help?</h3>
+            <p>Make sure you have set the following environment variables in Replit Secrets:</p>
+            <ul>
+                <li><strong>API_ID</strong> - Get from <a href="https://my.telegram.org" target="_blank">my.telegram.org</a></li>
+                <li><strong>API_HASH</strong> - Get from <a href="https://my.telegram.org" target="_blank">my.telegram.org</a></li>
+                <li><strong>PHONE_NUMBER</strong> - Your Telegram phone number (e.g., +1234567890)</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
