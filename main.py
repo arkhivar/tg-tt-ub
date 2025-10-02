@@ -1,10 +1,11 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
-from telethon.sync import TelegramClient
+from telethon import TelegramClient
 from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError
 import os
 import queue
 import threading
 import time
+import asyncio
 from datetime import datetime
 
 app = Flask(__name__)
@@ -15,8 +16,37 @@ api_hash = os.environ.get('API_HASH')
 phone = os.environ.get('PHONE_NUMBER')
 
 client = None
-if api_id and api_hash:
-    client = TelegramClient('session', int(api_id), api_hash)
+telethon_loop = None
+
+def run_async_in_telethon_thread(coro):
+    """Run an async coroutine in the Telethon thread's event loop"""
+    if telethon_loop is None:
+        raise RuntimeError("Telethon loop not initialized")
+    future = asyncio.run_coroutine_threadsafe(coro, telethon_loop)
+    return future.result(timeout=30)
+
+def init_telethon():
+    """Initialize Telethon in a dedicated thread with its own event loop"""
+    global client, telethon_loop
+    
+    if not api_id or not api_hash:
+        return
+    
+    telethon_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(telethon_loop)
+    
+    client = TelegramClient('session', int(api_id), api_hash, loop=telethon_loop)
+    
+    async def start():
+        await client.connect()
+        print("Telethon client connected")
+    
+    telethon_loop.run_until_complete(start())
+    telethon_loop.run_forever()
+
+telethon_thread = threading.Thread(target=init_telethon, daemon=True)
+telethon_thread.start()
+time.sleep(2)
 
 task_queue = queue.Queue()
 sort_status = {
@@ -50,9 +80,8 @@ def background_worker():
             
             add_log(f"Starting sort for chat: {chat_id}")
             
-            with client:
-                from telethon_handler import sort_topics
-                sort_topics(client, chat_id, sort_status, add_log)
+            from telethon_handler import sort_topics
+            run_async_in_telethon_thread(sort_topics(client, chat_id, sort_status, add_log))
             
             add_log("Sort completed successfully!")
             
@@ -71,12 +100,8 @@ def index():
     if not client:
         return render_template('error.html', error="Missing API credentials. Please set API_ID, API_HASH, and PHONE_NUMBER in Replit Secrets.")
     
-    try:
-        with client:
-            if not client.is_user_authorized():
-                return redirect(url_for('login'))
-    except Exception as e:
-        return render_template('error.html', error=f"Client error: {str(e)}")
+    if not os.path.exists('session.session'):
+        return redirect(url_for('login'))
     
     return render_template('index.html')
 
@@ -93,8 +118,10 @@ def login():
             return render_template('login.html', error="Please enter the verification code")
         
         try:
-            with client:
-                client.sign_in(phone, code, phone_code_hash=phone_code_hash)
+            async def do_sign_in():
+                return await client.sign_in(phone, code, phone_code_hash=phone_code_hash)
+            
+            run_async_in_telethon_thread(do_sign_in())
             session.pop('phone_code_hash', None)
             return redirect(url_for('index'))
         except PhoneCodeInvalidError:
@@ -104,13 +131,15 @@ def login():
         except Exception as e:
             return render_template('login.html', error=f"Login error: {str(e)}")
     
+    if os.path.exists('session.session'):
+        return redirect(url_for('index'))
+    
     try:
-        with client:
-            if client.is_user_authorized():
-                return redirect(url_for('index'))
-            
-            sent_code = client.send_code_request(phone)
-            session['phone_code_hash'] = sent_code.phone_code_hash
+        async def send_code():
+            return await client.send_code_request(phone)
+        
+        sent_code = run_async_in_telethon_thread(send_code())
+        session['phone_code_hash'] = sent_code.phone_code_hash
     except Exception as e:
         return render_template('error.html', error=f"Failed to send code: {str(e)}")
     
@@ -121,12 +150,8 @@ def start_sort():
     if not client:
         return jsonify({"error": "Client not initialized. Please check API credentials."}), 500
     
-    try:
-        with client:
-            if not client.is_user_authorized():
-                return jsonify({"error": "Not authorized. Please login first."}), 401
-    except Exception as e:
-        return jsonify({"error": f"Authorization check failed: {str(e)}"}), 500
+    if not os.path.exists('session.session'):
+        return jsonify({"error": "Not authorized. Please login first."}), 401
     
     data = request.json
     chat_id = data.get('chat_id')
@@ -150,9 +175,11 @@ def logout():
         return jsonify({"error": "Cannot logout while a sort operation is running"}), 400
     
     try:
-        with client:
-            client.log_out()
-        import os
+        async def do_logout():
+            await client.log_out()
+        
+        run_async_in_telethon_thread(do_logout())
+        
         if os.path.exists('session.session'):
             os.remove('session.session')
         return jsonify({"status": "success"})

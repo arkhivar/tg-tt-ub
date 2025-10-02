@@ -1,12 +1,12 @@
 from telethon.tl.functions.channels import GetForumTopicsRequest
 from telethon.errors import FloodWaitError, ChatAdminRequiredError
-import time
+import asyncio
 
-def sort_topics(client, chat_id, sort_status, add_log):
+async def sort_topics(client, chat_id, sort_status, add_log):
     add_log(f"Resolving chat entity: {chat_id}")
     
     try:
-        channel = client.get_entity(chat_id)
+        channel = await client.get_entity(chat_id)
     except Exception as e:
         raise Exception(f"Failed to resolve chat: {str(e)}")
     
@@ -19,7 +19,7 @@ def sort_topics(client, chat_id, sort_status, add_log):
     
     while True:
         try:
-            result = client(GetForumTopicsRequest(
+            result = await client(GetForumTopicsRequest(
                 channel=channel,
                 offset_date=offset_date,
                 offset_id=offset_id,
@@ -45,7 +45,7 @@ def sort_topics(client, chat_id, sort_status, add_log):
         except FloodWaitError as e:
             wait_time = e.seconds
             add_log(f"Rate limited. Waiting {wait_time} seconds...")
-            time.sleep(wait_time)
+            await asyncio.sleep(wait_time)
             continue
         except Exception as e:
             raise Exception(f"Failed to fetch topics: {str(e)}")
@@ -65,7 +65,7 @@ def sort_topics(client, chat_id, sort_status, add_log):
     
     for idx, topic in enumerate(sorted_topics):
         try:
-            client.send_message(
+            await client.send_message(
                 channel,
                 ".",
                 reply_to=topic.top_message
@@ -75,14 +75,14 @@ def sort_topics(client, chat_id, sort_status, add_log):
             add_log(f"Sent message to topic {topic.id} ({idx + 1}/{len(sorted_topics)})")
             
             if idx < len(sorted_topics) - 1:
-                time.sleep(3)
+                await asyncio.sleep(3)
                 
         except FloodWaitError as e:
             wait_time = e.seconds
             add_log(f"Rate limited. Waiting {wait_time} seconds...")
-            time.sleep(wait_time)
+            await asyncio.sleep(wait_time)
             
-            client.send_message(
+            await client.send_message(
                 channel,
                 ".",
                 reply_to=topic.top_message
@@ -90,7 +90,7 @@ def sort_topics(client, chat_id, sort_status, add_log):
             sort_status["progress"] = idx + 1
             
             if idx < len(sorted_topics) - 1:
-                time.sleep(3)
+                await asyncio.sleep(3)
         except Exception as e:
             add_log(f"Error sending to topic {topic.id}: {str(e)}")
             continue

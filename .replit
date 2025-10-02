@@ -10,15 +10,6 @@ packages = ["openssl"]
 runButton = "Project"
 
 [[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Flask Server"
-
-[[workflows.workflow]]
 name = "Flask Server"
 author = "agent"
 
@@ -35,5 +26,5 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 38149
+localPort = 35159
 externalPort = 3000
