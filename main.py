@@ -35,7 +35,16 @@ def init_telethon():
     telethon_loop = asyncio.new_event_loop()
     asyncio.set_event_loop(telethon_loop)
     
-    client = TelegramClient('session', int(api_id), api_hash, loop=telethon_loop)
+    client = TelegramClient(
+        'session', 
+        int(api_id), 
+        api_hash, 
+        loop=telethon_loop,
+        device_model='Desktop',
+        app_version='1.0',
+        lang_code='en',
+        system_lang_code='en'
+    )
     
     async def start():
         await client.connect()

@@ -34,6 +34,13 @@ Preferred communication style: Simple, everyday language.
   - **Solution**: Web-based code entry form with Flask session management
   - **Pros**: One-time setup, persistent authentication
   - **Cons**: Session file must be preserved across deployments
+- **Critical TelegramClient Parameters**: Required for proper session persistence (Oct 2025 fix)
+  - `device_model='Desktop'`: Identifies device type to Telegram
+  - `app_version='1.0'`: Application version identifier
+  - `lang_code='en'`: Primary language code (ISO 639-1)
+  - `system_lang_code='en'`: System language code
+  - **Issue**: Without these parameters, sessions crash with "key not registered" errors
+  - **Source**: Official Telethon community guidance for session stability
 
 ### Data Flow
 1. User initiates sort via web interface with chat ID/username
