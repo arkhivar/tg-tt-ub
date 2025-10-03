@@ -183,6 +183,12 @@ def start_sort():
     if not chat_id:
         return jsonify({"error": "Chat ID is required"}), 400
     
+    if sort_by not in ['emoji', 'alphabetical']:
+        return jsonify({"error": "Invalid sort_by value. Must be 'emoji' or 'alphabetical'"}), 400
+    
+    if sort_order not in ['ascending', 'descending']:
+        return jsonify({"error": "Invalid sort_order value. Must be 'ascending' or 'descending'"}), 400
+    
     if sort_status["running"]:
         return jsonify({"error": "A sort operation is already running"}), 400
     

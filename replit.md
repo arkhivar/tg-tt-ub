@@ -2,7 +2,13 @@
 
 ## Overview
 
-This is a Flask-based web application that uses a Telegram userbot (via Telethon) to sort forum topics in Telegram groups by their emoji ID. The application operates as a userbot (authenticated with a user account, not a bot token), allowing it to interact with any Telegram group where the user has access. The core functionality fetches all forum topics from a specified group, sorts them by their emoji icon ID, and posts a message in each topic in the sorted order to rearrange them.
+This is a Flask-based web application that uses a Telegram userbot (via Telethon) to sort forum topics in Telegram groups. The application operates as a userbot (authenticated with a user account, not a bot token), allowing it to interact with any Telegram group where the user has access. The core functionality fetches all forum topics from a specified group, sorts them using the selected method, and posts a message in each topic in the sorted order to rearrange them.
+
+### Sorting Options (Oct 2025)
+- **By Emoji ID**: Sorts topics by their emoji icon ID (numeric)
+- **Alphabetical**: Sorts topics by their title (case-insensitive)
+- **Order**: Both methods support ascending and descending order
+- **Extensible Design**: Dropdown-based UI ready for additional sorting methods
 
 ## User Preferences
 
@@ -43,13 +49,14 @@ Preferred communication style: Simple, everyday language.
   - **Source**: Official Telethon community guidance for session stability
 
 ### Data Flow
-1. User initiates sort via web interface with chat ID/username
-2. Task queued to background worker
-3. Worker fetches all forum topics via Telegram API (pagination-aware)
-4. Topics sorted by `icon_emoji_id`
-5. Worker posts message to each topic in sorted order
-6. Progress tracked in shared status dictionary
-7. Frontend polls status endpoint for updates
+1. User initiates sort via web interface with chat ID/username, sort method, and sort order
+2. Frontend sends `sort_by` (emoji/alphabetical) and `sort_order` (ascending/descending) parameters
+3. Backend validates parameters and queues task to background worker
+4. Worker fetches all forum topics via Telegram API (pagination-aware)
+5. Topics sorted by selected method (`icon_emoji_id` or `title`) with chosen order
+6. Worker posts message to each topic in sorted order with 3-second delays
+7. Progress tracked in shared status dictionary
+8. Frontend polls status endpoint for real-time updates
 
 ### External Dependencies
 

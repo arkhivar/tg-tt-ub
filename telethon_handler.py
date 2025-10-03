@@ -2,7 +2,7 @@ from telethon.tl.functions.channels import GetForumTopicsRequest
 from telethon.errors import FloodWaitError, ChatAdminRequiredError
 import asyncio
 
-async def sort_topics(client, chat_id, sort_status, add_log):
+async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', sort_order='ascending'):
     add_log(f"Resolving chat entity: {chat_id}")
     
     try:
@@ -55,12 +55,21 @@ async def sort_topics(client, chat_id, sort_status, add_log):
     
     add_log(f"Total topics fetched: {len(all_topics)}")
     
-    sorted_topics = sorted(
-        all_topics,
-        key=lambda t: t.icon_emoji_id if hasattr(t, 'icon_emoji_id') and t.icon_emoji_id else 0
-    )
+    if sort_by == 'alphabetical':
+        sorted_topics = sorted(
+            all_topics,
+            key=lambda t: t.title.lower() if hasattr(t, 'title') and t.title else '',
+            reverse=(sort_order == 'descending')
+        )
+        add_log(f"Topics sorted alphabetically ({sort_order})")
+    else:
+        sorted_topics = sorted(
+            all_topics,
+            key=lambda t: t.icon_emoji_id if hasattr(t, 'icon_emoji_id') and t.icon_emoji_id else 0,
+            reverse=(sort_order == 'descending')
+        )
+        add_log(f"Topics sorted by emoji ID ({sort_order})")
     
-    add_log("Topics sorted by emoji ID")
     sort_status["total"] = len(sorted_topics)
     
     for idx, topic in enumerate(sorted_topics):
