@@ -158,6 +158,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const fullName = [data.user.first_name, data.user.last_name].filter(Boolean).join(' ');
                     userName.textContent = fullName || data.user.username || 'User';
                     userPhone.textContent = data.user.phone || '';
+                    
+                    const initials = (data.user.first_name || data.user.username || '?')[0].toUpperCase();
+                    document.getElementById('userAvatar').textContent = initials;
                 } else {
                     statusDot.className = 'status-dot offline';
                     statusLabel.textContent = 'Not authenticated';
