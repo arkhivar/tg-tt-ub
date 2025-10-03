@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const verifyBtn = document.getElementById('verifyBtn');
     const requestCodeBtn = document.getElementById('requestCodeBtn');
     const chatIdInput = document.getElementById('chatId');
+    const sortBySelect = document.getElementById('sortBy');
+    const sortOrderSelect = document.getElementById('sortOrder');
     const progressCard = document.getElementById('progressCard');
     const progressFill = document.getElementById('progressFill');
     const progressText = document.getElementById('progressText');
@@ -33,6 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startSort() {
         const chatId = chatIdInput.value.trim();
+        const sortBy = sortBySelect.value;
+        const sortOrder = sortOrderSelect.value;
         
         if (!chatId) {
             alert('Please enter a chat ID or username');
@@ -47,7 +51,11 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ chat_id: chatId })
+            body: JSON.stringify({ 
+                chat_id: chatId,
+                sort_by: sortBy,
+                sort_order: sortOrder
+            })
         })
         .then(response => response.json())
         .then(data => {
