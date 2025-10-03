@@ -87,6 +87,9 @@ def background_worker():
         
         try:
             chat_id = task['chat_id']
+            sort_by = task.get('sort_by', 'emoji')
+            sort_order = task.get('sort_order', 'ascending')
+            
             sort_status["running"] = True
             sort_status["current_chat"] = chat_id
             sort_status["progress"] = 0
@@ -94,9 +97,10 @@ def background_worker():
             sort_status["error"] = None
             
             add_log(f"Starting sort for chat: {chat_id}")
+            add_log(f"Sort method: {sort_by}, Order: {sort_order}")
             
             from telethon_handler import sort_topics
-            run_async_in_telethon_thread(sort_topics(client, chat_id, sort_status, add_log))
+            run_async_in_telethon_thread(sort_topics(client, chat_id, sort_status, add_log, sort_by, sort_order))
             
             add_log("Sort completed successfully!")
             
@@ -173,6 +177,8 @@ def start_sort():
     
     data = request.json
     chat_id = data.get('chat_id')
+    sort_by = data.get('sort_by', 'emoji')
+    sort_order = data.get('sort_order', 'ascending')
     
     if not chat_id:
         return jsonify({"error": "Chat ID is required"}), 400
@@ -180,7 +186,11 @@ def start_sort():
     if sort_status["running"]:
         return jsonify({"error": "A sort operation is already running"}), 400
     
-    task_queue.put({'chat_id': chat_id})
+    task_queue.put({
+        'chat_id': chat_id,
+        'sort_by': sort_by,
+        'sort_order': sort_order
+    })
     return jsonify({"status": "queued", "message": "Sort operation started"})
 
 @app.route('/status')
