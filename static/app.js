@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const startBtn = document.getElementById('startBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const verifyBtn = document.getElementById('verifyBtn');
+    const requestCodeBtn = document.getElementById('requestCodeBtn');
     const chatIdInput = document.getElementById('chatId');
     const progressCard = document.getElementById('progressCard');
     const progressFill = document.getElementById('progressFill');
@@ -20,9 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const userName = document.getElementById('userName');
     const userPhone = document.getElementById('userPhone');
 
+    let cooldownTimer = null;
+
     startBtn.addEventListener('click', startSort);
     logoutBtn.addEventListener('click', logout);
     verifyBtn.addEventListener('click', verifyCode);
+    requestCodeBtn.addEventListener('click', requestNewCode);
     
     checkAuthStatus();
     authInterval = setInterval(checkAuthStatus, 5000);
@@ -213,5 +217,56 @@ document.addEventListener('DOMContentLoaded', () => {
             verifyBtn.disabled = false;
             verifyBtn.textContent = 'Verify Code';
         });
+    }
+
+    function requestNewCode() {
+        requestCodeBtn.disabled = true;
+        const originalText = requestCodeBtn.textContent;
+        requestCodeBtn.textContent = 'Sending...';
+
+        fetch('/request_code', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                if (data.cooldown_remaining) {
+                    startCooldown(data.cooldown_remaining);
+                } else {
+                    alert(data.error);
+                    requestCodeBtn.disabled = false;
+                    requestCodeBtn.textContent = originalText;
+                }
+            } else {
+                alert('New verification code sent to your Telegram app!');
+                startCooldown(60);
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error.message);
+            requestCodeBtn.disabled = false;
+            requestCodeBtn.textContent = originalText;
+        });
+    }
+
+    function startCooldown(seconds) {
+        let remaining = seconds;
+        requestCodeBtn.disabled = true;
+        
+        if (cooldownTimer) {
+            clearInterval(cooldownTimer);
+        }
+        
+        cooldownTimer = setInterval(() => {
+            if (remaining <= 0) {
+                clearInterval(cooldownTimer);
+                cooldownTimer = null;
+                requestCodeBtn.disabled = false;
+                requestCodeBtn.textContent = 'Request New Code';
+            } else {
+                requestCodeBtn.textContent = `Wait ${remaining}s`;
+                remaining--;
+            }
+        }, 1000);
     }
 });

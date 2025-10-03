@@ -17,6 +17,8 @@ phone = os.environ.get('PHONE_NUMBER')
 
 client = None
 telethon_loop = None
+last_code_request_time = 0
+CODE_REQUEST_COOLDOWN = 60
 
 def run_async_in_telethon_thread(coro):
     """Run an async coroutine in the Telethon thread's event loop"""
@@ -214,6 +216,38 @@ def auth_status():
             return jsonify({"authorized": False})
     except Exception as e:
         return jsonify({"authorized": False, "error": str(e)})
+
+@app.route('/request_code', methods=['POST'])
+def request_code():
+    global last_code_request_time
+    
+    if not client:
+        return jsonify({"error": "Client not initialized"}), 500
+    
+    current_time = time.time()
+    time_since_last_request = current_time - last_code_request_time
+    
+    if time_since_last_request < CODE_REQUEST_COOLDOWN:
+        remaining = int(CODE_REQUEST_COOLDOWN - time_since_last_request)
+        return jsonify({
+            "error": f"Please wait {remaining} seconds before requesting another code",
+            "cooldown_remaining": remaining
+        }), 429
+    
+    try:
+        async def send_code():
+            return await client.send_code_request(phone)
+        
+        sent_code = run_async_in_telethon_thread(send_code())
+        session['phone_code_hash'] = sent_code.phone_code_hash
+        last_code_request_time = current_time
+        
+        return jsonify({
+            "status": "success",
+            "message": "Verification code sent to your Telegram app"
+        })
+    except Exception as e:
+        return jsonify({"error": f"Failed to send code: {str(e)}"}), 500
 
 @app.route('/logout', methods=['POST'])
 def logout():
