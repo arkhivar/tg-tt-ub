@@ -113,50 +113,53 @@ def index():
     if not client:
         return render_template('error.html', error="Missing API credentials. Please set API_ID, API_HASH, and PHONE_NUMBER in Replit Secrets.")
     
-    if not os.path.exists('session.session'):
-        return redirect(url_for('login'))
+    try:
+        async def check_auth():
+            return await client.is_user_authorized()
+        
+        is_authorized = run_async_in_telethon_thread(check_auth())
+        
+        if not is_authorized and 'phone_code_hash' not in session:
+            try:
+                async def send_code():
+                    return await client.send_code_request(phone)
+                
+                sent_code = run_async_in_telethon_thread(send_code())
+                session['phone_code_hash'] = sent_code.phone_code_hash
+            except Exception as e:
+                print(f"Failed to send code: {e}")
+    except Exception as e:
+        print(f"Auth check error: {e}")
     
     return render_template('index.html')
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/login', methods=['POST'])
 def login():
     if not client:
-        return render_template('error.html', error="Missing API credentials")
+        return jsonify({"error": "Client not initialized"}), 500
     
-    if request.method == 'POST':
-        code = request.form.get('code')
-        phone_code_hash = session.get('phone_code_hash')
-        
-        if not code:
-            return render_template('login.html', error="Please enter the verification code")
-        
-        try:
-            async def do_sign_in():
-                return await client.sign_in(phone, code, phone_code_hash=phone_code_hash)
-            
-            run_async_in_telethon_thread(do_sign_in())
-            session.pop('phone_code_hash', None)
-            return redirect(url_for('index'))
-        except PhoneCodeInvalidError:
-            return render_template('login.html', error="Invalid code. Please try again.")
-        except SessionPasswordNeededError:
-            return render_template('login.html', error="2FA is enabled. Please disable it temporarily or contact support.")
-        except Exception as e:
-            return render_template('login.html', error=f"Login error: {str(e)}")
+    code = request.form.get('code')
+    phone_code_hash = session.get('phone_code_hash')
     
-    if os.path.exists('session.session'):
-        return redirect(url_for('index'))
+    if not code:
+        return jsonify({"error": "Please enter the verification code"}), 400
     
     try:
-        async def send_code():
-            return await client.send_code_request(phone)
+        async def do_sign_in():
+            result = await client.sign_in(phone, code, phone_code_hash=phone_code_hash)
+            if os.path.exists('session.session'):
+                os.chmod('session.session', 0o666)
+            return result
         
-        sent_code = run_async_in_telethon_thread(send_code())
-        session['phone_code_hash'] = sent_code.phone_code_hash
+        run_async_in_telethon_thread(do_sign_in())
+        session.pop('phone_code_hash', None)
+        return jsonify({"status": "success"})
+    except PhoneCodeInvalidError:
+        return jsonify({"error": "Invalid code. Please try again."}), 400
+    except SessionPasswordNeededError:
+        return jsonify({"error": "2FA is enabled. Please disable it temporarily."}), 400
     except Exception as e:
-        return render_template('error.html', error=f"Failed to send code: {str(e)}")
-    
-    return render_template('login.html')
+        return jsonify({"error": f"Login error: {str(e)}"}), 500
 
 @app.route('/start_sort', methods=['POST'])
 def start_sort():
@@ -181,6 +184,36 @@ def start_sort():
 @app.route('/status')
 def status():
     return jsonify(sort_status)
+
+@app.route('/auth_status')
+def auth_status():
+    if not client:
+        return jsonify({"authorized": False, "error": "Client not initialized"})
+    
+    try:
+        async def check_auth():
+            if not await client.is_user_authorized():
+                return None
+            me = await client.get_me()
+            return {
+                "id": me.id,
+                "first_name": me.first_name,
+                "last_name": me.last_name,
+                "username": me.username,
+                "phone": me.phone
+            }
+        
+        user_info = run_async_in_telethon_thread(check_auth())
+        
+        if user_info:
+            return jsonify({
+                "authorized": True,
+                "user": user_info
+            })
+        else:
+            return jsonify({"authorized": False})
+    except Exception as e:
+        return jsonify({"authorized": False, "error": str(e)})
 
 @app.route('/logout', methods=['POST'])
 def logout():

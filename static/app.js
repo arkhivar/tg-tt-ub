@@ -1,8 +1,10 @@
 let statusInterval = null;
+let authInterval = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     const startBtn = document.getElementById('startBtn');
     const logoutBtn = document.getElementById('logoutBtn');
+    const verifyBtn = document.getElementById('verifyBtn');
     const chatIdInput = document.getElementById('chatId');
     const progressCard = document.getElementById('progressCard');
     const progressFill = document.getElementById('progressFill');
@@ -10,9 +12,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentChat = document.getElementById('currentChat');
     const statusText = document.getElementById('statusText');
     const logContainer = document.getElementById('logContainer');
+    const statusDot = document.getElementById('statusDot');
+    const statusLabel = document.getElementById('statusLabel');
+    const userInfo = document.getElementById('userInfo');
+    const loginForm = document.getElementById('loginForm');
+    const sortCard = document.getElementById('sortCard');
+    const userName = document.getElementById('userName');
+    const userPhone = document.getElementById('userPhone');
 
     startBtn.addEventListener('click', startSort);
     logoutBtn.addEventListener('click', logout);
+    verifyBtn.addEventListener('click', verifyCode);
+    
+    checkAuthStatus();
+    authInterval = setInterval(checkAuthStatus, 5000);
 
     function startSort() {
         const chatId = chatIdInput.value.trim();
@@ -121,13 +134,81 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                window.location.href = '/login';
+                location.reload();
             } else {
                 alert('Logout failed: ' + (data.error || 'Unknown error'));
             }
         })
         .catch(error => {
             alert('Error: ' + error.message);
+        });
+    }
+
+    function checkAuthStatus() {
+        fetch('/auth_status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.authorized) {
+                    statusDot.className = 'status-dot online';
+                    statusLabel.textContent = 'Connected';
+                    userInfo.style.display = 'block';
+                    loginForm.style.display = 'none';
+                    sortCard.classList.remove('disabled');
+                    
+                    const fullName = [data.user.first_name, data.user.last_name].filter(Boolean).join(' ');
+                    userName.textContent = fullName || data.user.username || 'User';
+                    userPhone.textContent = data.user.phone || '';
+                } else {
+                    statusDot.className = 'status-dot offline';
+                    statusLabel.textContent = 'Not authenticated';
+                    userInfo.style.display = 'none';
+                    loginForm.style.display = 'block';
+                    sortCard.classList.add('disabled');
+                }
+            })
+            .catch(error => {
+                console.error('Auth status error:', error);
+                statusDot.className = 'status-dot offline';
+                statusLabel.textContent = 'Error checking status';
+            });
+    }
+
+    function verifyCode() {
+        const code = document.getElementById('loginCode').value.trim();
+        
+        if (!code) {
+            alert('Please enter the verification code');
+            return;
+        }
+
+        verifyBtn.disabled = true;
+        verifyBtn.textContent = 'Verifying...';
+
+        fetch('/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: 'code=' + encodeURIComponent(code)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Login failed: ' + data.error);
+                verifyBtn.disabled = false;
+                verifyBtn.textContent = 'Verify Code';
+            } else {
+                document.getElementById('loginCode').value = '';
+                alert('Login successful!');
+                checkAuthStatus();
+                verifyBtn.disabled = false;
+                verifyBtn.textContent = 'Verify Code';
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error.message);
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = 'Verify Code';
         });
     }
 });
