@@ -32,6 +32,8 @@ def init_telethon():
     if not api_id or not api_hash:
         return
     
+    old_umask = os.umask(0o000)
+    
     telethon_loop = asyncio.new_event_loop()
     asyncio.set_event_loop(telethon_loop)
     
@@ -45,6 +47,8 @@ def init_telethon():
         lang_code='en',
         system_lang_code='en'
     )
+    
+    os.umask(old_umask)
     
     async def start():
         await client.connect()
