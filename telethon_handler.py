@@ -90,7 +90,12 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
             
             last_topic = result.topics[-1]
             offset_topic = last_topic.id
-            offset_id = last_topic.id
+            offset_id = last_topic.top_message or 0
+            
+            # Safety check: if top_message is None, we can't continue
+            if not last_topic.top_message:
+                add_log("Warning: Last topic has no top_message, stopping pagination")
+                break
             
         except ChatAdminRequiredError:
             raise Exception("Bot needs admin rights or this is not a forum group")
