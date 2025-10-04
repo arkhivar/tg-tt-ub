@@ -110,7 +110,19 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
     if not all_topics:
         raise Exception("No topics found in this chat")
     
-    add_log(f"Total topics fetched: {len(all_topics)}")
+    # Deduplicate topics by ID (in case pagination fetched duplicates)
+    seen_ids = set()
+    unique_topics = []
+    for topic in all_topics:
+        if topic.id not in seen_ids:
+            seen_ids.add(topic.id)
+            unique_topics.append(topic)
+    
+    if len(all_topics) != len(unique_topics):
+        add_log(f"Removed {len(all_topics) - len(unique_topics)} duplicate topics")
+    
+    all_topics = unique_topics
+    add_log(f"Total unique topics: {len(all_topics)}")
     
     if sort_by == 'alphabetical':
         sorted_topics = sorted(
