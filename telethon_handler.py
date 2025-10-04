@@ -6,12 +6,17 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
     add_log(f"Resolving chat entity: {chat_id}")
     
     try:
-        add_log("Populating entity cache...")
-        await client.get_dialogs()
-        add_log("Cache populated, resolving entity...")
         channel = await client.get_entity(chat_id)
-    except Exception as e:
-        raise Exception(f"Failed to resolve chat: {str(e)}")
+    except Exception as first_error:
+        try:
+            add_log("Entity not in cache, populating all dialogs...")
+            dialog_count = 0
+            async for dialog in client.iter_dialogs():
+                dialog_count += 1
+            add_log(f"Cached {dialog_count} dialogs, retrying...")
+            channel = await client.get_entity(chat_id)
+        except Exception as e:
+            raise Exception(f"Failed to resolve chat: {str(e)}")
     
     add_log(f"Fetching topics from chat: {chat_id}")
     
@@ -80,11 +85,12 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
             await client.send_message(
                 channel,
                 ".",
-                reply_to=topic.top_message
+                reply_to=topic.top_message,
+                silent=True
             )
             
             sort_status["progress"] = idx + 1
-            add_log(f"Sent message to topic {topic.id} ({idx + 1}/{len(sorted_topics)})")
+            add_log(f"Sent silent message to topic {topic.id} ({idx + 1}/{len(sorted_topics)})")
             
             if idx < len(sorted_topics) - 1:
                 await asyncio.sleep(3)
@@ -97,7 +103,8 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
             await client.send_message(
                 channel,
                 ".",
-                reply_to=topic.top_message
+                reply_to=topic.top_message,
+                silent=True
             )
             sort_status["progress"] = idx + 1
             
