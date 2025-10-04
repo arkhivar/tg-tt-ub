@@ -89,6 +89,7 @@ def background_worker():
             chat_id = task['chat_id']
             sort_by = task.get('sort_by', 'emoji')
             sort_order = task.get('sort_order', 'ascending')
+            skip_pinned = task.get('skip_pinned', True)
             
             sort_status["running"] = True
             sort_status["current_chat"] = chat_id
@@ -98,9 +99,11 @@ def background_worker():
             
             add_log(f"Starting sort for chat: {chat_id}")
             add_log(f"Sort method: {sort_by}, Order: {sort_order}")
+            if skip_pinned:
+                add_log("Pinned topics will be skipped")
             
             from telethon_handler import sort_topics
-            run_async_in_telethon_thread(sort_topics(client, chat_id, sort_status, add_log, sort_by, sort_order))
+            run_async_in_telethon_thread(sort_topics(client, chat_id, sort_status, add_log, sort_by, sort_order, skip_pinned))
             
             add_log("Sort completed successfully!")
             
@@ -179,6 +182,7 @@ def start_sort():
     chat_id = data.get('chat_id')
     sort_by = data.get('sort_by', 'emoji')
     sort_order = data.get('sort_order', 'ascending')
+    skip_pinned = data.get('skip_pinned', True)
     
     if not chat_id:
         return jsonify({"error": "Chat ID is required"}), 400
@@ -195,7 +199,8 @@ def start_sort():
     task_queue.put({
         'chat_id': chat_id,
         'sort_by': sort_by,
-        'sort_order': sort_order
+        'sort_order': sort_order,
+        'skip_pinned': skip_pinned
     })
     return jsonify({"status": "queued", "message": "Sort operation started"})
 

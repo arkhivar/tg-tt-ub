@@ -4,7 +4,7 @@ from telethon.errors import FloodWaitError, ChatAdminRequiredError
 import asyncio
 import re
 
-async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', sort_order='ascending'):
+async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', sort_order='ascending', skip_pinned=True):
     add_log(f"Resolving chat entity: {chat_id}")
     
     channel = None
@@ -130,16 +130,28 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
     all_topics = unique_topics
     add_log(f"Total unique topics: {len(all_topics)}")
     
+    # Separate pinned and non-pinned topics if skip_pinned is enabled
+    if skip_pinned:
+        pinned_topics = [t for t in all_topics if hasattr(t, 'pinned') and t.pinned]
+        topics_to_sort = [t for t in all_topics if not (hasattr(t, 'pinned') and t.pinned)]
+        
+        if pinned_topics:
+            add_log(f"Found {len(pinned_topics)} pinned topic(s) - will not sort these")
+            add_log(f"Sorting {len(topics_to_sort)} non-pinned topics")
+    else:
+        topics_to_sort = all_topics
+        pinned_topics = []
+    
     if sort_by == 'alphabetical':
         sorted_topics = sorted(
-            all_topics,
+            topics_to_sort,
             key=lambda t: t.title.lower() if hasattr(t, 'title') and t.title else '',
             reverse=(sort_order == 'descending')
         )
         add_log(f"Topics sorted alphabetically ({sort_order})")
     else:
         sorted_topics = sorted(
-            all_topics,
+            topics_to_sort,
             key=lambda t: t.icon_emoji_id if hasattr(t, 'icon_emoji_id') and t.icon_emoji_id else 0,
             reverse=(sort_order == 'descending')
         )

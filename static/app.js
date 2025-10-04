@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const chatId = chatIdInput.value.trim();
         const sortBy = sortBySelect.value;
         const sortOrder = sortOrderSelect.value;
+        const skipPinned = document.getElementById('skipPinned').checked;
         
         if (!chatId) {
             alert('Please enter a chat ID or username');
@@ -54,7 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify({ 
                 chat_id: chatId,
                 sort_by: sortBy,
-                sort_order: sortOrder
+                sort_order: sortOrder,
+                skip_pinned: skipPinned
             })
         })
         .then(response => response.json())
