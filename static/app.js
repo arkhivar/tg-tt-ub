@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     requestCodeBtn.addEventListener('click', requestNewCode);
     
     checkAuthStatus();
-    authInterval = setInterval(checkAuthStatus, 30000);
+    authInterval = setInterval(checkAuthStatus, 50000);
 
     function startSort() {
         const chatId = chatIdInput.value.trim();
