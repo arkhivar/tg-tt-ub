@@ -6,6 +6,9 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
     add_log(f"Resolving chat entity: {chat_id}")
     
     try:
+        add_log("Populating entity cache...")
+        await client.get_dialogs()
+        add_log("Cache populated, resolving entity...")
         channel = await client.get_entity(chat_id)
     except Exception as e:
         raise Exception(f"Failed to resolve chat: {str(e)}")
