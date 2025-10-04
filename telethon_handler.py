@@ -56,6 +56,9 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
     
     add_log(f"Fetching topics from chat: {chat_id}")
     
+    # Safety limit to prevent extremely long operations
+    MAX_TOPICS = 10000
+    
     all_topics = []
     offset_date = None
     offset_id = 0
@@ -76,6 +79,11 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
             
             all_topics.extend(result.topics)
             add_log(f"Fetched {len(result.topics)} topics (total: {len(all_topics)})")
+            
+            # Safety check: stop if we exceed the maximum
+            if len(all_topics) >= MAX_TOPICS:
+                add_log(f"Reached maximum topic limit ({MAX_TOPICS}). Stopping fetch.")
+                break
             
             if len(result.topics) < 100:
                 break
