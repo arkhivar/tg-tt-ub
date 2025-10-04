@@ -60,7 +60,7 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
     MAX_TOPICS = 10000
     
     all_topics = []
-    offset_date = None
+    offset_date = 0
     offset_id = 0
     offset_topic = 0
     
@@ -88,9 +88,15 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
             if len(result.topics) < 100:
                 break
             
+            # Update offsets for next page based on LAST topic
             last_topic = result.topics[-1]
             offset_topic = last_topic.id
             offset_id = last_topic.top_message or 0
+            
+            # CRITICAL: Get the date of the top_message from the messages array
+            # This is what makes pagination work correctly!
+            message_dates = {m.id: m.date for m in result.messages}
+            offset_date = message_dates.get(offset_id, 0)
             
             # Safety check: if top_message is None, we can't continue
             if not last_topic.top_message:
