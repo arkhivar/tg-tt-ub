@@ -1,22 +1,58 @@
 from telethon.tl.functions.channels import GetForumTopicsRequest
+from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
 from telethon.errors import FloodWaitError, ChatAdminRequiredError
 import asyncio
+import re
 
 async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', sort_order='ascending'):
     add_log(f"Resolving chat entity: {chat_id}")
     
-    try:
-        channel = await client.get_entity(chat_id)
-    except Exception as first_error:
+    channel = None
+    
+    # Check if it's an invite link
+    invite_hash = None
+    if 't.me/' in str(chat_id):
+        if '/joinchat/' in chat_id:
+            invite_hash = chat_id.split('/joinchat/')[-1]
+        elif '/+' in chat_id or 't.me/+' in chat_id:
+            invite_hash = chat_id.split('+')[-1]
+    
+    if invite_hash:
         try:
-            add_log("Entity not in cache, populating all dialogs...")
-            dialog_count = 0
-            async for dialog in client.iter_dialogs():
-                dialog_count += 1
-            add_log(f"Cached {dialog_count} dialogs, retrying...")
-            channel = await client.get_entity(chat_id)
+            add_log(f"Detected invite link, checking chat...")
+            check_result = await client(CheckChatInviteRequest(invite_hash))
+            
+            # If already a member
+            if hasattr(check_result, 'chat'):
+                channel = check_result.chat
+                add_log(f"Found chat from invite: {channel.title}")
+            else:
+                raise Exception("You need to join this group first. Please join via Telegram and try again.")
         except Exception as e:
-            raise Exception(f"Failed to resolve chat: {str(e)}")
+            raise Exception(f"Failed to resolve invite link: {str(e)}")
+    else:
+        # Try direct resolution first
+        try:
+            channel = await client.get_entity(chat_id)
+        except Exception as first_error:
+            try:
+                add_log("Entity not in cache, searching all dialogs...")
+                dialog_count = 0
+                # Try to find by name/title
+                async for dialog in client.iter_dialogs():
+                    dialog_count += 1
+                    # Check if chat_id matches dialog name or ID
+                    if (str(chat_id).lower() in dialog.name.lower() or 
+                        str(dialog.id) == str(chat_id)):
+                        channel = dialog.entity
+                        add_log(f"Found chat: {dialog.name}")
+                        break
+                
+                if not channel:
+                    add_log(f"Searched {dialog_count} dialogs, retrying by ID...")
+                    channel = await client.get_entity(chat_id)
+            except Exception as e:
+                raise Exception(f"Failed to resolve chat: {str(e)}. Try using the group's @username or invite link.")
     
     add_log(f"Fetching topics from chat: {chat_id}")
     
