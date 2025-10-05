@@ -164,7 +164,7 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
             await client.send_message(
                 channel,
                 ".",
-                reply_to=topic.top_message,
+                reply_to_msg_id=topic.id,
                 silent=True
             )
             
@@ -182,7 +182,7 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
             await client.send_message(
                 channel,
                 ".",
-                reply_to=topic.top_message,
+                reply_to_msg_id=topic.id,
                 silent=True
             )
             sort_status["progress"] = idx + 1
