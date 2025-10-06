@@ -104,6 +104,20 @@ async def fetch_emoji_icons(client, chat_id, add_log):
     if not all_topics:
         raise Exception("No topics found in this chat")
     
+    # Deduplicate topics by ID (same as in sort_topics)
+    seen_ids = set()
+    unique_topics = []
+    for topic in all_topics:
+        if topic.id not in seen_ids:
+            seen_ids.add(topic.id)
+            unique_topics.append(topic)
+    
+    if len(all_topics) != len(unique_topics):
+        add_log(f"Removed {len(all_topics) - len(unique_topics)} duplicate topics during emoji fetch")
+    
+    all_topics = unique_topics
+    add_log(f"Total unique topics for emoji analysis: {len(all_topics)}")
+    
     # Extract unique emoji icons
     emoji_map = {}  # emoji_id -> {emoji_id, count, example_title}
     
