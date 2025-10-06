@@ -83,10 +83,13 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(data => {
             if (data.error) {
                 alert('Error: ' + data.error);
+                fetchEmojisBtn.disabled = false;
+                fetchEmojisBtn.textContent = '1. Fetch Emoji Icons';
             } else {
                 fetchedEmojis = data.emojis;
                 displayEmojiList(fetchedEmojis);
-                fetchEmojisBtn.textContent = '✓ Emojis Fetched';
+                fetchEmojisBtn.disabled = false;
+                fetchEmojisBtn.textContent = '🔄 Re-fetch Emojis';
             }
         })
         .catch(error => {
