@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const customOrderSection = document.getElementById('customOrderSection');
     const standardSortOptions = document.getElementById('standardSortOptions');
     const emojiList = document.getElementById('emojiList');
+    const sortByRadios = document.querySelectorAll('input[name="sortBy"]'); // Get all radio buttons with name 'sortBy'
 
     let cooldownTimer = null;
     let fetchedEmojis = [];
@@ -36,24 +37,33 @@ document.addEventListener('DOMContentLoaded', () => {
     verifyBtn.addEventListener('click', verifyCode);
     requestCodeBtn.addEventListener('click', requestNewCode);
     fetchEmojisBtn.addEventListener('click', fetchEmojis);
-    
-    sortBySelect.addEventListener('change', () => {
-        if (sortBySelect.value === 'custom') {
-            customOrderSection.style.display = 'block';
-            standardSortOptions.style.display = 'none';
-        } else {
-            customOrderSection.style.display = 'none';
-            standardSortOptions.style.display = 'block';
-            emojiList.style.display = 'none';
-        }
+
+    sortByRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (radio.value === 'custom' && radio.checked) {
+                customOrderSection.style.display = 'block';
+                standardSortOptions.style.display = 'none';
+            } else if (radio.checked) {
+                customOrderSection.style.display = 'none';
+                standardSortOptions.style.display = 'block';
+                emojiList.style.display = 'none';
+            }
+        });
     });
-    
+
+    // Initialize UI state on page load
+    const checkedRadio = document.querySelector('input[name="sortBy"]:checked');
+    if (checkedRadio && checkedRadio.value === 'custom') {
+        customOrderSection.style.display = 'block';
+        standardSortOptions.style.display = 'none';
+    }
+
     checkAuthStatus();
     authInterval = setInterval(checkAuthStatus, 50000);
 
     function fetchEmojis() {
         const chatId = chatIdInput.value.trim();
-        
+
         if (!chatId) {
             alert('Please enter a chat ID or username first');
             return;
@@ -88,33 +98,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function displayEmojiList(emojis) {
         emojiList.innerHTML = '<h3>2. Arrange Emoji Order (Drag to reorder)</h3><small>Top emojis will appear first. Uncheck to ignore.</small>';
-        
+
         const listContainer = document.createElement('div');
         listContainer.id = 'emojiSortableList';
         listContainer.style.cssText = 'display: flex; flex-direction: column; gap: 8px; margin-top: 10px;';
-        
+
         emojis.forEach((emoji, index) => {
             const item = document.createElement('div');
             item.className = 'emoji-item';
             item.draggable = true;
             item.dataset.emojiId = emoji.emoji_id;
             item.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; cursor: move;';
-            
+
             item.innerHTML = `
                 <input type="checkbox" checked class="emoji-checkbox" style="width: auto; margin: 0;">
                 <span style="font-weight: bold;">ID: ${emoji.emoji_id}</span>
                 <span style="flex: 1;">${emoji.example_title} (${emoji.count} topics)</span>
                 <span style="color: #999;">☰</span>
             `;
-            
+
             item.addEventListener('dragstart', handleDragStart);
             item.addEventListener('dragover', handleDragOver);
             item.addEventListener('drop', handleDrop);
             item.addEventListener('dragend', handleDragEnd);
-            
+
             listContainer.appendChild(item);
         });
-        
+
         emojiList.appendChild(listContainer);
         emojiList.style.display = 'block';
     }
@@ -159,10 +169,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startSort() {
         const chatId = chatIdInput.value.trim();
-        const sortBy = sortBySelect.value;
+        const sortBy = document.querySelector('input[name="sortBy"]:checked').value; // Get the value of the checked radio button
         const sortOrder = sortOrderSelect.value;
         const skipPinned = document.getElementById('skipPinned').checked;
-        
+
         if (!chatId) {
             alert('Please enter a chat ID or username');
             return;
@@ -178,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sortBy === 'custom') {
             const emojiItems = document.querySelectorAll('.emoji-item');
             customEmojiOrder = [];
-            
+
             emojiItems.forEach(item => {
                 const checkbox = item.querySelector('.emoji-checkbox');
                 if (checkbox.checked) {
@@ -236,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(response => response.json())
             .then(data => {
                 currentChat.textContent = data.current_chat || '-';
-                
+
                 if (data.running) {
                     statusText.textContent = 'Running...';
                     statusText.style.color = '#667eea';
@@ -313,11 +323,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     userInfo.style.display = 'block';
                     loginForm.style.display = 'none';
                     sortCard.classList.remove('disabled');
-                    
+
                     const fullName = [data.user.first_name, data.user.last_name].filter(Boolean).join(' ');
                     userName.textContent = fullName || data.user.username || 'User';
                     userPhone.textContent = data.user.phone || '';
-                    
+
                     const initials = (data.user.first_name || data.user.username || '?')[0].toUpperCase();
                     document.getElementById('userAvatar').textContent = initials;
                 } else {
@@ -337,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function verifyCode() {
         const code = document.getElementById('loginCode').value.trim();
-        
+
         if (!code) {
             alert('Please enter the verification code');
             return;
@@ -407,11 +417,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function startCooldown(seconds) {
         let remaining = seconds;
         requestCodeBtn.disabled = true;
-        
+
         if (cooldownTimer) {
             clearInterval(cooldownTimer);
         }
-        
+
         cooldownTimer = setInterval(() => {
             if (remaining <= 0) {
                 clearInterval(cooldownTimer);
