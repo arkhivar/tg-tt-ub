@@ -107,7 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = document.createElement('div');
             item.className = 'emoji-item';
             item.draggable = true;
-            item.dataset.emojiId = emoji.emoji_id;
+            // Store emoji_id as string to preserve precision
+            item.dataset.emojiId = String(emoji.emoji_id);
             item.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; cursor: move;';
 
             item.innerHTML = `
@@ -192,7 +193,8 @@ document.addEventListener('DOMContentLoaded', () => {
             emojiItems.forEach(item => {
                 const checkbox = item.querySelector('.emoji-checkbox');
                 if (checkbox.checked) {
-                    customEmojiOrder.push(parseInt(item.dataset.emojiId));
+                    // Keep as string to preserve precision
+                    customEmojiOrder.push(item.dataset.emojiId);
                 }
             });
 

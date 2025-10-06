@@ -112,14 +112,14 @@ async def fetch_emoji_icons(client, chat_id, add_log):
             emoji_id = topic.icon_emoji_id
             if emoji_id not in emoji_map:
                 emoji_map[emoji_id] = {
-                    'emoji_id': emoji_id,
+                    'emoji_id': str(emoji_id),  # Convert to string to preserve precision in JSON
                     'count': 0,
                     'example_title': topic.title if hasattr(topic, 'title') else 'Untitled'
                 }
             emoji_map[emoji_id]['count'] += 1
     
     emoji_list = list(emoji_map.values())
-    emoji_list.sort(key=lambda x: x['emoji_id'])  # Sort by emoji ID
+    emoji_list.sort(key=lambda x: int(x['emoji_id']))  # Sort by emoji ID
     
     add_log(f"Found {len(emoji_list)} unique emoji icons")
     return emoji_list
@@ -271,9 +271,10 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
         add_log(f"Topics sorted alphabetically ({sort_order})")
     elif sort_by == 'custom' and custom_emoji_order:
         # Custom emoji order sorting - only include topics with checked emojis
-        emoji_priority = {emoji_id: idx for idx, emoji_id in enumerate(custom_emoji_order)}
+        # Convert custom_emoji_order to integers for comparison
+        emoji_priority = {int(emoji_id): idx for idx, emoji_id in enumerate(custom_emoji_order)}
         
-        add_log(f"Selected emoji IDs: {custom_emoji_order}")
+        add_log(f"Selected emoji IDs: {list(emoji_priority.keys())}")
         
         # Debug: Show all unique emoji IDs in topics
         topic_emoji_ids = set()
