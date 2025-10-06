@@ -270,16 +270,21 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
         )
         add_log(f"Topics sorted alphabetically ({sort_order})")
     elif sort_by == 'custom' and custom_emoji_order:
-        # Custom emoji order sorting
+        # Custom emoji order sorting - only include topics with checked emojis
         emoji_priority = {emoji_id: idx for idx, emoji_id in enumerate(custom_emoji_order)}
+        
+        # Filter to only include topics with emojis in the custom order
+        filtered_topics = [
+            t for t in topics_to_sort 
+            if hasattr(t, 'icon_emoji_id') and t.icon_emoji_id in emoji_priority
+        ]
         
         def get_sort_key(topic):
             emoji_id = topic.icon_emoji_id if hasattr(topic, 'icon_emoji_id') and topic.icon_emoji_id else None
-            # If emoji is in custom order, use its priority; otherwise put it at the end
             return emoji_priority.get(emoji_id, len(custom_emoji_order) + 1)
         
-        sorted_topics = sorted(topics_to_sort, key=get_sort_key)
-        add_log(f"Topics sorted by custom emoji order")
+        sorted_topics = sorted(filtered_topics, key=get_sort_key)
+        add_log(f"Topics sorted by custom emoji order ({len(sorted_topics)} topics with selected emojis)")
     else:
         sorted_topics = sorted(
             topics_to_sort,
