@@ -53,20 +53,27 @@
                 <select id="sortBy">
                     <option value="emoji">Emoji ID</option>
                     <option value="alphabetical">Alphabetical</option>
+                    <option value="custom">Custom Emoji Order</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label for="sortOrder">Sort Order:</label>
-                <select id="sortOrder">
-                    <option value="ascending">Ascending</option>
-                    <option value="descending">Descending</option>
-                </select>
+            <div id="standardSortOptions">
+                <div class="form-group">
+                    <label for="sortOrder">Sort Order:</label>
+                    <select id="sortOrder">
+                        <option value="ascending">Ascending</option>
+                        <option value="descending">Descending</option>
+                    </select>
+                </div>
             </div>
             <div class="form-group">
                 <label style="display: flex; align-items: center; gap: 8px;">
                     <input type="checkbox" id="skipPinned" checked style="width: auto; margin: 0;">
                     <span>Do not apply sort to pinned topics</span>
                 </label>
+            </div>
+            <div id="customOrderSection" style="display: none;">
+                <button id="fetchEmojisBtn" class="btn btn-secondary">1. Fetch Emoji Icons</button>
+                <div id="emojiList" style="margin-top: 15px; display: none;"></div>
             </div>
             <button id="startBtn" class="btn btn-primary">Start Sort</button>
             <button id="logoutBtn" class="btn btn-secondary">Logout</button>

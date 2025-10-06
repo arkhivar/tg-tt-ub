@@ -90,6 +90,7 @@ def background_worker():
             sort_by = task.get('sort_by', 'emoji')
             sort_order = task.get('sort_order', 'ascending')
             skip_pinned = task.get('skip_pinned', True)
+            custom_emoji_order = task.get('custom_emoji_order')
             
             sort_status["running"] = True
             sort_status["current_chat"] = chat_id
@@ -101,9 +102,11 @@ def background_worker():
             add_log(f"Sort method: {sort_by}, Order: {sort_order}")
             if skip_pinned:
                 add_log("Pinned topics will be skipped")
+            if custom_emoji_order:
+                add_log(f"Using custom emoji order with {len(custom_emoji_order)} emojis")
             
             from telethon_handler import sort_topics
-            run_async_in_telethon_thread(sort_topics(client, chat_id, sort_status, add_log, sort_by, sort_order, skip_pinned))
+            run_async_in_telethon_thread(sort_topics(client, chat_id, sort_status, add_log, sort_by, sort_order, skip_pinned, custom_emoji_order))
             
             add_log("Sort completed successfully!")
             
@@ -170,6 +173,27 @@ def login():
     except Exception as e:
         return jsonify({"error": f"Login error: {str(e)}"}), 500
 
+@app.route('/fetch_emojis', methods=['POST'])
+def fetch_emojis():
+    if not client:
+        return jsonify({"error": "Client not initialized. Please check API credentials."}), 500
+    
+    if not os.path.exists('session.session'):
+        return jsonify({"error": "Not authorized. Please login first."}), 401
+    
+    data = request.json
+    chat_id = data.get('chat_id')
+    
+    if not chat_id:
+        return jsonify({"error": "Chat ID is required"}), 400
+    
+    try:
+        from telethon_handler import fetch_emoji_icons
+        emoji_list = run_async_in_telethon_thread(fetch_emoji_icons(client, chat_id, add_log))
+        return jsonify({"emojis": emoji_list})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/start_sort', methods=['POST'])
 def start_sort():
     if not client:
@@ -183,15 +207,19 @@ def start_sort():
     sort_by = data.get('sort_by', 'emoji')
     sort_order = data.get('sort_order', 'ascending')
     skip_pinned = data.get('skip_pinned', True)
+    custom_emoji_order = data.get('custom_emoji_order')  # List of emoji IDs in desired order
     
     if not chat_id:
         return jsonify({"error": "Chat ID is required"}), 400
     
-    if sort_by not in ['emoji', 'alphabetical']:
-        return jsonify({"error": "Invalid sort_by value. Must be 'emoji' or 'alphabetical'"}), 400
+    if sort_by not in ['emoji', 'alphabetical', 'custom']:
+        return jsonify({"error": "Invalid sort_by value. Must be 'emoji', 'alphabetical', or 'custom'"}), 400
     
     if sort_order not in ['ascending', 'descending']:
         return jsonify({"error": "Invalid sort_order value. Must be 'ascending' or 'descending'"}), 400
+    
+    if sort_by == 'custom' and not custom_emoji_order:
+        return jsonify({"error": "custom_emoji_order is required when sort_by is 'custom'"}), 400
     
     if sort_status["running"]:
         return jsonify({"error": "A sort operation is already running"}), 400
@@ -200,7 +228,8 @@ def start_sort():
         'chat_id': chat_id,
         'sort_by': sort_by,
         'sort_order': sort_order,
-        'skip_pinned': skip_pinned
+        'skip_pinned': skip_pinned,
+        'custom_emoji_order': custom_emoji_order
     })
     return jsonify({"status": "queued", "message": "Sort operation started"})
 

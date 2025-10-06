@@ -4,7 +4,127 @@ from telethon.errors import FloodWaitError, ChatAdminRequiredError
 import asyncio
 import re
 
-async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', sort_order='ascending', skip_pinned=True):
+async def fetch_emoji_icons(client, chat_id, add_log):
+    """Fetch all unique emoji icons from forum topics"""
+    add_log(f"Fetching emoji icons from chat: {chat_id}")
+    
+    channel = None
+    
+    # Check if it's an invite link
+    invite_hash = None
+    if 't.me/' in str(chat_id):
+        if '/joinchat/' in chat_id:
+            invite_hash = chat_id.split('/joinchat/')[-1]
+        elif '/+' in chat_id or 't.me/+' in chat_id:
+            invite_hash = chat_id.split('+')[-1]
+    
+    if invite_hash:
+        try:
+            add_log(f"Detected invite link, checking chat...")
+            check_result = await client(CheckChatInviteRequest(invite_hash))
+            
+            if hasattr(check_result, 'chat'):
+                channel = check_result.chat
+                add_log(f"Found chat from invite: {channel.title}")
+            else:
+                raise Exception("You need to join this group first. Please join via Telegram and try again.")
+        except Exception as e:
+            raise Exception(f"Failed to resolve invite link: {str(e)}")
+    else:
+        try:
+            channel = await client.get_entity(chat_id)
+        except Exception as first_error:
+            try:
+                add_log("Entity not in cache, searching all dialogs...")
+                dialog_count = 0
+                async for dialog in client.iter_dialogs():
+                    dialog_count += 1
+                    if (str(chat_id).lower() in dialog.name.lower() or 
+                        str(dialog.id) == str(chat_id)):
+                        channel = dialog.entity
+                        add_log(f"Found chat: {dialog.name}")
+                        break
+                
+                if not channel:
+                    add_log(f"Searched {dialog_count} dialogs, retrying by ID...")
+                    channel = await client.get_entity(chat_id)
+            except Exception as e:
+                raise Exception(f"Failed to resolve chat: {str(e)}. Try using the group's @username or invite link.")
+    
+    MAX_TOPICS = 10000
+    all_topics = []
+    offset_date = 0
+    offset_id = 0
+    offset_topic = 0
+    
+    while True:
+        try:
+            result = await client(GetForumTopicsRequest(
+                channel=channel,
+                offset_date=offset_date,
+                offset_id=offset_id,
+                offset_topic=offset_topic,
+                limit=100
+            ))
+            
+            if not result.topics:
+                break
+            
+            all_topics.extend(result.topics)
+            add_log(f"Fetched {len(result.topics)} topics (total: {len(all_topics)})")
+            
+            if len(all_topics) >= MAX_TOPICS:
+                add_log(f"Reached maximum topic limit ({MAX_TOPICS}). Stopping fetch.")
+                break
+            
+            if len(result.topics) < 100:
+                break
+            
+            last_topic = result.topics[-1]
+            offset_topic = last_topic.id
+            offset_id = last_topic.top_message or 0
+            
+            message_dates = {m.id: m.date for m in result.messages}
+            offset_date = message_dates.get(offset_id, 0)
+            
+            if not last_topic.top_message:
+                add_log("Warning: Last topic has no top_message, stopping pagination")
+                break
+            
+        except ChatAdminRequiredError:
+            raise Exception("Bot needs admin rights or this is not a forum group")
+        except FloodWaitError as e:
+            wait_time = e.seconds
+            add_log(f"Rate limited. Waiting {wait_time} seconds...")
+            await asyncio.sleep(wait_time)
+            continue
+        except Exception as e:
+            raise Exception(f"Failed to fetch topics: {str(e)}")
+    
+    if not all_topics:
+        raise Exception("No topics found in this chat")
+    
+    # Extract unique emoji icons
+    emoji_map = {}  # emoji_id -> {emoji_id, count, example_title}
+    
+    for topic in all_topics:
+        if hasattr(topic, 'icon_emoji_id') and topic.icon_emoji_id:
+            emoji_id = topic.icon_emoji_id
+            if emoji_id not in emoji_map:
+                emoji_map[emoji_id] = {
+                    'emoji_id': emoji_id,
+                    'count': 0,
+                    'example_title': topic.title if hasattr(topic, 'title') else 'Untitled'
+                }
+            emoji_map[emoji_id]['count'] += 1
+    
+    emoji_list = list(emoji_map.values())
+    emoji_list.sort(key=lambda x: x['emoji_id'])  # Sort by emoji ID
+    
+    add_log(f"Found {len(emoji_list)} unique emoji icons")
+    return emoji_list
+
+async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', sort_order='ascending', skip_pinned=True, custom_emoji_order=None):
     add_log(f"Resolving chat entity: {chat_id}")
     
     channel = None
@@ -149,6 +269,17 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
             reverse=(sort_order == 'descending')
         )
         add_log(f"Topics sorted alphabetically ({sort_order})")
+    elif sort_by == 'custom' and custom_emoji_order:
+        # Custom emoji order sorting
+        emoji_priority = {emoji_id: idx for idx, emoji_id in enumerate(custom_emoji_order)}
+        
+        def get_sort_key(topic):
+            emoji_id = topic.icon_emoji_id if hasattr(topic, 'icon_emoji_id') and topic.icon_emoji_id else None
+            # If emoji is in custom order, use its priority; otherwise put it at the end
+            return emoji_priority.get(emoji_id, len(custom_emoji_order) + 1)
+        
+        sorted_topics = sorted(topics_to_sort, key=get_sort_key)
+        add_log(f"Topics sorted by custom emoji order")
     else:
         sorted_topics = sorted(
             topics_to_sort,

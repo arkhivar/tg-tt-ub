@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logoutBtn');
     const verifyBtn = document.getElementById('verifyBtn');
     const requestCodeBtn = document.getElementById('requestCodeBtn');
+    const fetchEmojisBtn = document.getElementById('fetchEmojisBtn');
     const chatIdInput = document.getElementById('chatId');
     const sortBySelect = document.getElementById('sortBy');
     const sortOrderSelect = document.getElementById('sortOrder');
@@ -22,16 +23,139 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortCard = document.getElementById('sortCard');
     const userName = document.getElementById('userName');
     const userPhone = document.getElementById('userPhone');
+    const customOrderSection = document.getElementById('customOrderSection');
+    const standardSortOptions = document.getElementById('standardSortOptions');
+    const emojiList = document.getElementById('emojiList');
 
     let cooldownTimer = null;
+    let fetchedEmojis = [];
+    let customEmojiOrder = [];
 
     startBtn.addEventListener('click', startSort);
     logoutBtn.addEventListener('click', logout);
     verifyBtn.addEventListener('click', verifyCode);
     requestCodeBtn.addEventListener('click', requestNewCode);
+    fetchEmojisBtn.addEventListener('click', fetchEmojis);
+    
+    sortBySelect.addEventListener('change', () => {
+        if (sortBySelect.value === 'custom') {
+            customOrderSection.style.display = 'block';
+            standardSortOptions.style.display = 'none';
+        } else {
+            customOrderSection.style.display = 'none';
+            standardSortOptions.style.display = 'block';
+            emojiList.style.display = 'none';
+        }
+    });
     
     checkAuthStatus();
     authInterval = setInterval(checkAuthStatus, 50000);
+
+    function fetchEmojis() {
+        const chatId = chatIdInput.value.trim();
+        
+        if (!chatId) {
+            alert('Please enter a chat ID or username first');
+            return;
+        }
+
+        fetchEmojisBtn.disabled = true;
+        fetchEmojisBtn.textContent = 'Fetching...';
+
+        fetch('/fetch_emojis', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ chat_id: chatId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+            } else {
+                fetchedEmojis = data.emojis;
+                displayEmojiList(fetchedEmojis);
+                fetchEmojisBtn.textContent = '✓ Emojis Fetched';
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error.message);
+            fetchEmojisBtn.disabled = false;
+            fetchEmojisBtn.textContent = '1. Fetch Emoji Icons';
+        });
+    }
+
+    function displayEmojiList(emojis) {
+        emojiList.innerHTML = '<h3>2. Arrange Emoji Order (Drag to reorder)</h3><small>Top emojis will appear first. Uncheck to ignore.</small>';
+        
+        const listContainer = document.createElement('div');
+        listContainer.id = 'emojiSortableList';
+        listContainer.style.cssText = 'display: flex; flex-direction: column; gap: 8px; margin-top: 10px;';
+        
+        emojis.forEach((emoji, index) => {
+            const item = document.createElement('div');
+            item.className = 'emoji-item';
+            item.draggable = true;
+            item.dataset.emojiId = emoji.emoji_id;
+            item.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; cursor: move;';
+            
+            item.innerHTML = `
+                <input type="checkbox" checked class="emoji-checkbox" style="width: auto; margin: 0;">
+                <span style="font-weight: bold;">ID: ${emoji.emoji_id}</span>
+                <span style="flex: 1;">${emoji.example_title} (${emoji.count} topics)</span>
+                <span style="color: #999;">☰</span>
+            `;
+            
+            item.addEventListener('dragstart', handleDragStart);
+            item.addEventListener('dragover', handleDragOver);
+            item.addEventListener('drop', handleDrop);
+            item.addEventListener('dragend', handleDragEnd);
+            
+            listContainer.appendChild(item);
+        });
+        
+        emojiList.appendChild(listContainer);
+        emojiList.style.display = 'block';
+    }
+
+    let draggedElement = null;
+
+    function handleDragStart(e) {
+        draggedElement = this;
+        this.style.opacity = '0.4';
+    }
+
+    function handleDragOver(e) {
+        if (e.preventDefault) {
+            e.preventDefault();
+        }
+        return false;
+    }
+
+    function handleDrop(e) {
+        if (e.stopPropagation) {
+            e.stopPropagation();
+        }
+
+        if (draggedElement !== this) {
+            const allItems = [...document.querySelectorAll('.emoji-item')];
+            const draggedIndex = allItems.indexOf(draggedElement);
+            const targetIndex = allItems.indexOf(this);
+
+            if (draggedIndex < targetIndex) {
+                this.parentNode.insertBefore(draggedElement, this.nextSibling);
+            } else {
+                this.parentNode.insertBefore(draggedElement, this);
+            }
+        }
+
+        return false;
+    }
+
+    function handleDragEnd(e) {
+        this.style.opacity = '1';
+    }
 
     function startSort() {
         const chatId = chatIdInput.value.trim();
@@ -44,6 +168,32 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        let requestBody = { 
+            chat_id: chatId,
+            sort_by: sortBy,
+            sort_order: sortOrder,
+            skip_pinned: skipPinned
+        };
+
+        if (sortBy === 'custom') {
+            const emojiItems = document.querySelectorAll('.emoji-item');
+            customEmojiOrder = [];
+            
+            emojiItems.forEach(item => {
+                const checkbox = item.querySelector('.emoji-checkbox');
+                if (checkbox.checked) {
+                    customEmojiOrder.push(parseInt(item.dataset.emojiId));
+                }
+            });
+
+            if (customEmojiOrder.length === 0) {
+                alert('Please select at least one emoji to include in the sort');
+                return;
+            }
+
+            requestBody.custom_emoji_order = customEmojiOrder;
+        }
+
         startBtn.disabled = true;
         startBtn.textContent = 'Starting...';
 
@@ -52,12 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ 
-                chat_id: chatId,
-                sort_by: sortBy,
-                sort_order: sortOrder,
-                skip_pinned: skipPinned
-            })
+            body: JSON.stringify(requestBody)
         })
         .then(response => response.json())
         .then(data => {
