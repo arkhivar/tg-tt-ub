@@ -91,6 +91,7 @@ def background_worker():
             sort_order = task.get('sort_order', 'ascending')
             skip_pinned = task.get('skip_pinned', True)
             custom_emoji_order = task.get('custom_emoji_order')
+            custom_message = task.get('custom_message', '.')
             
             sort_status["running"] = True
             sort_status["current_chat"] = chat_id
@@ -104,9 +105,10 @@ def background_worker():
                 add_log("Pinned topics will be skipped")
             if custom_emoji_order:
                 add_log(f"Using custom emoji order with {len(custom_emoji_order)} emojis")
+            add_log(f"Using message: '{custom_message}'")
             
             from telethon_handler import sort_topics
-            run_async_in_telethon_thread(sort_topics(client, chat_id, sort_status, add_log, sort_by, sort_order, skip_pinned, custom_emoji_order))
+            run_async_in_telethon_thread(sort_topics(client, chat_id, sort_status, add_log, sort_by, sort_order, skip_pinned, custom_emoji_order, custom_message))
             
             add_log("Sort completed successfully!")
             
@@ -208,6 +210,7 @@ def start_sort():
     sort_order = data.get('sort_order', 'ascending')
     skip_pinned = data.get('skip_pinned', True)
     custom_emoji_order = data.get('custom_emoji_order')  # List of emoji IDs in desired order
+    custom_message = data.get('custom_message', '.')  # Custom message for sorting
     
     if not chat_id:
         return jsonify({"error": "Chat ID is required"}), 400
@@ -229,7 +232,8 @@ def start_sort():
         'sort_by': sort_by,
         'sort_order': sort_order,
         'skip_pinned': skip_pinned,
-        'custom_emoji_order': custom_emoji_order
+        'custom_emoji_order': custom_emoji_order,
+        'custom_message': custom_message
     })
     return jsonify({"status": "queued", "message": "Sort operation started"})
 

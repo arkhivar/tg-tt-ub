@@ -176,6 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const sortBy = document.querySelector('input[name="sortBy"]:checked').value; // Get the value of the checked radio button
         const sortOrder = sortOrderSelect.value;
         const skipPinned = document.getElementById('skipPinned').checked;
+        const customMessage = document.getElementById('customMessage').value.trim();
 
         if (!chatId) {
             alert('Please enter a chat ID or username');
@@ -188,6 +189,10 @@ document.addEventListener('DOMContentLoaded', () => {
             sort_order: sortOrder,
             skip_pinned: skipPinned
         };
+
+        if (customMessage) {
+            requestBody.custom_message = customMessage;
+        }
 
         if (sortBy === 'custom') {
             const emojiItems = document.querySelectorAll('.emoji-item');

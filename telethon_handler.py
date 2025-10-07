@@ -138,7 +138,7 @@ async def fetch_emoji_icons(client, chat_id, add_log):
     add_log(f"Found {len(emoji_list)} unique emoji icons")
     return emoji_list
 
-async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', sort_order='ascending', skip_pinned=True, custom_emoji_order=None):
+async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', sort_order='ascending', skip_pinned=True, custom_emoji_order=None, custom_message='.'):
     add_log(f"Resolving chat entity: {chat_id}")
     
     channel = None
@@ -323,7 +323,7 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
         try:
             await client.send_message(
                 channel,
-                ".",
+                custom_message,
                 reply_to=topic.id,
                 silent=True
             )
@@ -341,7 +341,7 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
             
             await client.send_message(
                 channel,
-                ".",
+                custom_message,
                 reply_to=topic.id,
                 silent=True
             )
