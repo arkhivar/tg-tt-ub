@@ -193,6 +193,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (customMessage) {
             requestBody.custom_message = customMessage;
         }
+        
+        // Clear custom message field after using it
+        document.getElementById('customMessage').value = '';
 
         if (sortBy === 'custom') {
             const emojiItems = document.querySelectorAll('.emoji-item');
@@ -295,6 +298,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!data.running) {
                     startBtn.disabled = false;
                     startBtn.textContent = 'Start Sort';
+                    // Clear custom message when sort completes
+                    document.getElementById('customMessage').value = '';
                 }
             })
             .catch(error => {
