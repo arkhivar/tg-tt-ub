@@ -346,9 +346,11 @@ async def sort_topics(client, chat_id, sort_status, add_log, sort_by='emoji', so
                 silent=True
             )
             sort_status["progress"] = idx + 1
+            add_log(f"Sent silent message to topic {topic.id} ({idx + 1}/{len(sorted_topics)}) after rate limit")
             
             if idx < len(sorted_topics) - 1:
                 await asyncio.sleep(3)
         except Exception as e:
             add_log(f"Error sending to topic {topic.id}: {str(e)}")
+            sort_status["progress"] = idx + 1
             continue

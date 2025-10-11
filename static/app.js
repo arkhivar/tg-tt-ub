@@ -264,6 +264,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     statusText.textContent = 'Error!';
                     statusText.style.color = '#c33';
                     stopStatusPolling();
+                } else if (data.total > 0 && data.progress >= data.total) {
+                    statusText.textContent = 'Completed';
+                    statusText.style.color = '#5cb85c';
+                    stopStatusPolling();
+                } else if (!data.running && data.total > 0 && data.progress < data.total) {
+                    statusText.textContent = 'Processing...';
+                    statusText.style.color = '#667eea';
                 } else {
                     statusText.textContent = 'Completed';
                     statusText.style.color = '#5cb85c';
